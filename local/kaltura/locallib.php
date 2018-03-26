@@ -338,7 +338,7 @@ function local_kaltura_strip_querystring($endpoint, $params) {
  * @return string Returns HTML required to initiate an LTI launch.
  */
 function local_kaltura_request_lti_launch($ltirequest, $withblocks = true, $editor = null) {
-    global $CFG, $USER;
+    global $CFG, $USER, $SITE;  // add $SITE by ealps2d  
     
     if(is_null($editor))
     {
@@ -369,6 +369,13 @@ function local_kaltura_request_lti_launch($ltirequest, $withblocks = true, $edit
         $requestparams['resource_link_id'] = $lti->id;
     }
 
+    ### add by ealps2d : check CourseEditor
+    $isCourseEditor = has_capability('moodle/course:view', context_course::instance($SITE->id), $USER->id, false);
+    if ($isCourseEditor) {
+         $requestparams['roles'] .= ',urn:lti:sysrole:ims/lis/Administrator,urn:lti:instrole:ims/lis/Administrator';
+    };
+    ### add end
+
     // Moodle by default uses the Moodle user id.  Overriding this parameter to user the Moodle username.
     $requestparams['user_id'] = $USER->username;
 
@@ -398,7 +405,6 @@ function local_kaltura_request_lti_launch($ltirequest, $withblocks = true, $edit
     if (isset($ltirequest['custom_filter_type'])) {
         $requestparams['custom_filter_type'] = $ltirequest['custom_filter_type'];
     }
-
     $params = lti_sign_parameters($requestparams, $endpoint, 'POST', $lti->resourcekey, $lti->password);
 
     local_kaltura_strip_querystring($endpoint, $params);
@@ -493,12 +499,16 @@ function local_kaltura_get_kaf_publishing_data() {
             continue;
         }
 
+        ### add by ealps2d
+        $isCourseEditor = has_capability('moodle/course:view', context_course::instance($course->id), $USER->id, false);
+        $role = $isCourseEditor ? KALTURA_LTI_ADMIN_ROLE : $role;
+        ### add end
+
         if (KALTURA_LTI_ADMIN_ROLE != $role) {
             // Check if the user has the manage capability in the course.
             $hascap = has_capability('moodle/course:manageactivities', context_course::instance($course->id), $USER->id, false);
             $role = $hascap ? KALTURA_LTI_INSTRUCTOR_ROLE : KALTURA_LTI_LEARNER_ROLE;
         }
-
         // The properties must be nameed "courseId", "courseName" and "roles".
         $data = new stdClass();
         $data->courseId = $course->id;
@@ -571,6 +581,7 @@ function local_kaltura_get_user_capability_course($capability, $userid = null, $
     foreach ($rs as $course) {
         context_helper::preload_from_record($course);
         $context = context_course::instance($course->id);
+
         if (has_capability($capability, $context, $userid, $doanything)) {
             // We've got the capability. Make the record look like a course record
             // and store it
