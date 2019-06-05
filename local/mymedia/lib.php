@@ -44,7 +44,8 @@ function local_mymedia_extend_navigation($navigation) {
         }
     }
 
-    $nodehome = $navigation->get('home');
+    #$nodehome = $navigation->get('home');
+    $nodehome = $navigation->get('myhome');
     $context = context_user::instance($USER->id);
 
     if (empty($nodehome) || !has_capability('local/mymedia:view', $context, $USER)) {
